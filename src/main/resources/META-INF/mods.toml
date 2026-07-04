@@ -1,0 +1,36 @@
+modLoader="javafml"
+loaderVersion="[36,)"
+license="MIT"
+issueTrackerURL="https://github.com/yourname/autoemc/issues"
+
+[[mods]]
+modId="autoemc"
+version="${mod_version}"
+displayName="AutoEMC"
+authors="you"
+description='''
+Automatically assigns a generated EMC value (based on rarity, stack size and
+durability) to any item that ProjectE did not manage to give a value to
+through its normal recipe-based mapping.
+'''
+
+[[dependencies.autoemc]]
+    modId="forge"
+    mandatory=true
+    versionRange="[36,)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.autoemc]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="[1.16.5,1.17)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.autoemc]]
+modId="projecte"
+mandatory=true
+versionRange="[PE1.0.2,)"
+ordering="AFTER"
+side="BOTH"
