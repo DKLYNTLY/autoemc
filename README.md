@@ -1,143 +1,46 @@
 # AutoEMC
 
-Fills in EMC values for any item ProjectE didn't manage to map on its own, for
-Forge 1.16.5.
+**Automatic, safe EMC value generation for ProjectE.**
 
-## How it works
+AutoEMC scans your modpack's item registry and recipes on startup and fills in missing [ProjectE](https://www.curseforge.com/minecraft/mc-mods/projecte) EMC values automatically, so you're not stuck with a Table of Existence full of "unlearnable" items. It's built for large kitchen-sink modpacks where manually pricing every item is unrealistic.
 
-1. ProjectE finishes its normal, recipe-driven EMC mapping during world/server
-   startup, exactly as it always does - AutoEMC doesn't touch that process.
-2. Once the server has fully started, AutoEMC checks whether the set of
-   registered items has changed since the last time it ran (tracked in
-   `config/autoemc/known_items.json`). If nothing changed, it stops here -
-   no scan, no file write, no reload.
-3. If items were added or removed (new/updated/removed mods), it walks the
-   full item registry, expanding each item into its NBT-distinct variants
-   (potions, tipped arrows, enchanted books, etc. - the same technique
-   ProjectE's own `/dumpmissingemc` command uses) and asks ProjectE
-   (`ProjectEAPI.getEMCProxy().hasValue(stack)`) which of those still have no
-   value.
-4. For each one missing, it computes a value from rarity / stack size /
-   durability and merges it straight into
-   `config/ProjectE/custom_emc.json` - the exact file ProjectE's own
-   `/setemc` command writes to and its `CustomEMCMapper` reads from. Existing
-   entries (anything you or ProjectE already put there) are never
-   overwritten.
-5. A few ticks later it runs `/reload` once, which is what folds the new
-   file contents into ProjectE's real EMC graph (same as the message
-   ProjectE prints after you use `/setemc` yourself).
+## What it does
 
-Nothing here touches ProjectE's internal/undocumented mapping classes - it
-only uses the public `ProjectEAPI`, ProjectE's own `custom_emc.json` file
-format, and (for the final reload) ProjectE's own command, so it should keep
-working across ProjectE point releases for 1.16.5.
+*   **Solves EMC from recipes first.** AutoEMC walks your loaded recipes and derives EMC values from known inputs before ever guessing, so pricing stays internally consistent wherever possible.
+*   **Falls back intelligently when there's no recipe.** Items with no recipe path are priced using:
+    *   Bundled baseline values pulled directly from ProjectE Integration's shipped data (Botania, EnderIO, and dozens of other mods).
+    *   Material/tag-based fallback (ore, ingot, dust, block, raw forms, etc.), matched against `forge`, `mekanism`, `create`, and other configurable tag namespaces.
+    *   Rarity-based fallback as a last resort, with a reverse-recipe floor so cheap raw materials can't end up worth less than the processed goods made from them.
+*   **Understands NBT-tagged items.** A pluggable NBT material resolver framework (with built-in support for things like Avaritia singularities) prices NBT-variant items based on their embedded material, instead of lumping them all into one generic value. This can run both as a pre-scan pass and as a live ProjectE conversion source that resolves on demand.
+*   **Protects the economy from itself.** Several safety layers work together:
+    *   Creative-only and no-recipe technical items are locked to `1 EMC` so they can never become a cheap source of infinite value if they somehow leak into survival.
+    *   A large-drop guard blocks any single-run change that would crash an already-priced item's value by more than a configurable ratio, and logs it to a quarantine report instead of silently applying it.
+    *   An ownership arbiter decides, item by item, whether AutoEMC should keep tracking a value or hand it off to ProjectE/a pack author's manual entry — so legitimate overrides are respected but ProjectE simply echoing AutoEMC's own last value can't cause ownership (and the entry) to be deleted.
+*   **Batched and adaptive.** Every scan phase runs in small, adaptively-sized chunks across ticks instead of freezing the server on startup, even on packs with thousands of items.
+*   **Transparent.** Every generated value is logged with its source (`baseline`, `tag-material`, `rarity-fallback`, `reverse-recipe-floor`, `creative-no-recipe`, etc.), and the mod writes out diagnostic reports each scan:
+    *   `generated_entries.json` — everything AutoEMC currently owns
+    *   `underpriced_inputs_report.json` — non-owned items that look priced too low relative to what they're used to craft
+    *   `quarantined_drops.json` — value changes that were blocked for looking unsafe
 
-## Dropping this into your existing MDK
+## Requirements
 
-Copy `src/main/java/com/autoemc/mod` and
-`src/main/resources/META-INF/mods.toml` (merge, don't overwrite, if you
-already have your own) plus `pack.mcmeta` into your workspace's `src/main`.
-Rename the package/modid if you like - just keep them consistent.
+*   Minecraft 1.16.5, Forge
+*   [ProjectE](https://www.curseforge.com/minecraft/mc-mods/projecte) (required)
+*   [ProjectE Integration](https://www.curseforge.com/minecraft/mc-mods/projecte-integration) (required — AutoEMC's bundled baseline data is sourced from it, and it must be present for those integrations to actually function in-game)
 
-### Add the ProjectE dependency
+## Configuration highlights
 
-ProjectE isn't published on a normal Maven repo, so pick one of:
+All of the following are configurable in `autoemc-common.toml`:
 
-**Option A - use the jar you already have** (simplest, guarantees you compile
-against the exact PE build your pack uses). Put the ProjectE jar at
-`libs/ProjectE-1.16.5-PE1.0.2.jar` (match whatever version string your
-modpack ships), then:
+*   `scanNbtVariants` — scan NBT-tagged item variants (on by default)
+*   `useNbtMaterialResolvers` / `useLiveNbtMaterialResolution` — enable material-aware NBT pricing, pre-baked and/or live
+*   `giveCreativeNoRecipeItemsOneEmc` — toggle the creative-item safety floor (on by default)
+*   `largeDropProtectionThreshold` / `maxAllowedDropRatio` — tune the large-drop guard
+*   `ownershipSmallDifferenceRatio` — how much difference between AutoEMC's and ProjectE's value counts as "just noise"
+*   `tagFallbackNamespaces` — which tag namespaces are checked during material fallback
+*   `consistencyWarnMinRatio` / `consistencyWarnMinAbsoluteDelta` — thresholds for the underpriced-input report
 
-```gradle
-dependencies {
-    compileOnly fg.deobf(files('libs/ProjectE-1.16.5-PE1.0.2.jar'))
-}
-```
+## Notes
 
-Use `compileOnly` (not `implementation`) since ProjectE will already be
-present in the modpack at runtime - you don't want to shade/duplicate it.
-
-**Option B - CurseMaven:**
-
-```gradle
-repositories {
-    maven { url "https://cursemaven.com" }
-}
-
-dependencies {
-    compileOnly fg.deobf("curse.maven:projecte-238222:<file-id-for-your-version>")
-}
-```
-
-Look up the exact file id for your ProjectE build on its CurseForge files
-page.
-
-### Build
-
-```
-./gradlew build
-```
-
-The output jar in `build/libs/` goes in your modpack's `mods` folder
-alongside ProjectE.
-
-## Tuning
-
-All the numbers live in `config/autoemc-common.toml`, generated the first
-time you launch with the mod installed:
-
-- `rarityBaseValues` - base EMC per Minecraft `Rarity` tier (COMMON /
-  UNCOMMON / RARE / EPIC).
-- `adjustments` - multipliers for non-stackable and low-stack-size items, a
-  per-durability-point bonus, and a floor value.
-- `filtering` - `ignoredNamespaces` / `ignoredItems` if you want to exclude
-  particular mods or items entirely (e.g. mods that intentionally have
-  valueless items).
-- `nbt.scanNbtVariants` - whether to also cover NBT-distinct variants
-  (potions, enchanted books, material-tagged singularities, etc.), on by
-  default.
-- `nbt.maxNbtVariantsPerItem` - caps how many creative-tab NBT variants one
-  item id can add to `custom_emc.json`. Default is 64.
-- `nbt.runNbtPassAfterBasicPass` - legacy alias for `scanNbtVariants`; keep
-  using `scanNbtVariants` for new configs.
-- `nbt.useLiveNbtMaterialResolution` - registers AutoEMC's supported NBT
-  material resolvers with ProjectE's mapper/NBT processor hooks so matching
-  tagged stacks can resolve when ProjectE asks for their EMC, even if that
-  exact NBT variant was not found during the creative-tab scan.
-- `nbt.liveNbtResolverSeedValue` - tiny base value used only to make ProjectE
-  call the live NBT processor for supported item ids. The processor replaces
-  this value for recognized tagged stacks and leaves higher exact/custom
-  values alone.
-- `general.alwaysRescan` - force a full rescan on every start instead of only
-  when the item registry changed. Off by default; mainly useful while you're
-  tuning the base values above, so you don't have to add/remove a mod just to
-  trigger another pass.
-
-Since this is a heuristic fallback and not a real recipe-derived value, it's
-worth spending a few minutes tuning the base values against a couple of
-known items in your pack so the numbers feel consistent with the rest of
-your EMC economy.
-
-## Notes / limitations
-
-- This only fills items that end up with **zero contribution from every
-  ProjectE mapper** - it never overrides a value ProjectE (or another mod)
-  legitimately computed, and it never overwrites an existing
-  `custom_emc.json` entry.
-- Change detection is based on the set of registered item **ids**. A mod
-  that adds new NBT-driven variants of an *existing* item id (e.g. a new
-  enchantment) without registering any new item ids won't trigger a rescan
-  on its own - toggle `alwaysRescan` (or just delete
-  `config/autoemc/known_items.json`) if that happens and you want a manual
-  refresh.
-- NBT scanning only sees variants a mod exposes through `fillItemCategory`
-  for creative-tab listings. That works well for mods like Avaritia where
-  each singularity is intentionally listed there, but it is not a guarantee
-  for every possible crafted NBT combination. AutoEMC also registers supported
-  NBT material resolvers as a live ProjectE mapper/NBT processor path, so
-  known resolver item ids can still resolve recognized tagged stacks on
-  demand. New NBT-backed item families still need a resolver before AutoEMC
-  can understand their tag format.
-- Runs once per server start, only when needed. If you want to force a
-  refresh without changing mods, delete `config/autoemc/known_items.json`
-  (or set `alwaysRescan = true`) and restart.
+*   AutoEMC never overwrites a value that's already correctly priced by ProjectE or a pack author unless it's confident the change is safe.
+*   If you're auditing a pack's economy, the debug log and JSON reports in `config/autoemc/` are the fastest way to see exactly what was priced, how, and why.
