@@ -34,3 +34,10 @@ mandatory=true
 versionRange="[PE1.0.2,)"
 ordering="AFTER"
 side="BOTH"
+
+[[dependencies.autoemc]]
+modId="projecteintegration"
+mandatory=true
+versionRange="[4.6.1,)"
+ordering="AFTER"
+side="BOTH"
