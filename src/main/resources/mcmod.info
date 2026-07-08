@@ -1,0 +1,21 @@
+[
+  {
+    "modid": "autoemc",
+    "name": "AutoEMC Lite",
+    "description": "AutoEMC Lite is a lightweight Minecraft 1.12.2 ProjectE helper that scans loaded crafting and furnace recipes, derives EMC values for items ProjectE leaves unmapped, applies safe flat and OreDictionary fallback values for unsolved materials, and writes generated entries to ProjectE's custom_emc.json while preserving manual pack-author values. This 1.12.2 build intentionally keeps only the core features for testing demand in older modpacks.",
+    "version": "0.0.1",
+    "mcversion": "1.12.2",
+    "url": "",
+    "updateUrl": "",
+    "authorList": [
+      "DKLYNTLY"
+    ],
+    "credits": "Created as a 1.12.2 lite backport of AutoEMC for ProjectE-based modpacks. Thanks to Forge, ProjectE, and the Minecraft modding community.",
+    "logoFile": "",
+    "screenshots": [],
+    "dependencies": [
+      "required-after:forge@[14.23.5.2859,)",
+      "after:projecte"
+    ]
+  }
+]
