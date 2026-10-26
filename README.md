@@ -1,9 +1,29 @@
-# AutoEMC
+<h1 align="center">AutoEMC</h1>
 
 Fills in EMC values for any item ProjectE didn't manage to map on its own, for
 Forge 1.16.5.
 
-## How it works
+<p align="center"><a href="https://www.curseforge.com/minecraft/mc-mods/autoemc">Download on CurseForge</a> · <a href="https://discord.com/invite/mUGHmQxHG8">Discord</a> · <a href="https://github.com/DKLYNTLY/autoemc">GitHub source</a></p>
+
+## What you can do
+
+- Fill missing ProjectE EMC values for Forge 1.16.5.
+- Configure fallback values and excluded items.
+- Review generated values without replacing values already set by ProjectE or your pack.
+
+<details>
+<summary><strong>Install, update, and check compatibility</strong></summary>
+
+### Requirements
+
+This branch targets **Minecraft 1.16.5 with Forge**. Install **ProjectE** and **ProjectE Integration**, then place AutoEMC in the instance’s `mods` folder.
+
+</details>
+
+<details>
+<summary><strong>Play: controls, commands, and progression</strong></summary>
+
+### How it works
 
 1. ProjectE finishes its normal, recipe-driven EMC mapping during world/server
    startup, exactly as it always does - AutoEMC doesn't touch that process.
@@ -32,7 +52,9 @@ only uses the public `ProjectEAPI`, ProjectE's own `custom_emc.json` file
 format, and (for the final reload) ProjectE's own command, so it should keep
 working across ProjectE point releases for 1.16.5.
 
-## Dropping this into your existing MDK
+---
+
+### Dropping this into your existing MDK
 
 Copy `src/main/java/com/autoemc/mod` and
 `src/main/resources/META-INF/mods.toml` (merge, don't overwrite, if you
@@ -81,7 +103,12 @@ page.
 The output jar in `build/libs/` goes in your modpack's `mods` folder
 alongside ProjectE.
 
-## Tuning
+</details>
+
+<details>
+<summary><strong>Configure and customize</strong></summary>
+
+### Tuning
 
 All the numbers live in `config/autoemc-common.toml`, generated the first
 time you launch with the mod installed:
@@ -118,7 +145,27 @@ worth spending a few minutes tuning the base values against a couple of
 known items in your pack so the numbers feel consistent with the rest of
 your EMC economy.
 
-## Notes / limitations
+</details>
+
+<details>
+<summary><strong>Backups and recovery</strong></summary>
+
+### Before updating
+
+*Back up your world and configuration files before updating or changing settings. Keep a working copy of the old instance until you have checked the new setup.*
+
+</details>
+
+<details>
+<summary><strong>Troubleshooting, logs, and technical details</strong></summary>
+
+### Working with the source
+
+The build notes below are for contributions or changes allowed by the license or my written approval. Public source access does not grant permission to publish a separate modified release.
+
+---
+
+### Notes / limitations
 
 - This only fills items that end up with **zero contribution from every
   ProjectE mapper** - it never overrides a value ProjectE (or another mod)
@@ -141,3 +188,26 @@ your EMC economy.
 - Runs once per server start, only when needed. If you want to force a
   refresh without changing mods, delete `config/autoemc/known_items.json`
   (or set `alwaysRescan = true`) and restart.
+
+</details>
+
+<details>
+<summary><strong>About this project</strong></summary>
+
+### Author and links
+
+I create and maintain AutoEMC as **Dnydd (formerly known as dklyntly)**.
+
+[Official CurseForge page](https://www.curseforge.com/minecraft/mc-mods/autoemc) · [Discord](https://discord.com/invite/mUGHmQxHG8)
+
+### License
+
+Read [LICENSE](LICENSE) for this branch’s terms. Permissions granted with earlier releases remain in effect.
+
+</details>
+
+## Support my work
+
+If you enjoy my projects, you can leave a tip on Ko-fi. Support is always optional.
+
+[![Support me on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/A3G129JCLF)
